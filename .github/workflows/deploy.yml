@@ -1,0 +1,70 @@
+name: CI/CD Innovatech Monorepo (Docker Hub + EC2)
+
+# El pipeline se activará automáticamente cada vez que hagas un push a la rama deploy
+on:
+  push:
+    branches: [ "deploy" ]
+
+jobs:
+  # ==========================================
+  # TRABAJO 1: COMPILACIÓN Y CONSTRUCCIÓN (CI)
+  # ==========================================
+  build-and-push:
+    name: Construir imágenes y subir a Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v3
+
+      - name: Iniciar sesión en Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 1. Construir y subir Frontend (Puerto 80)
+      - name: Build & Push Frontend
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest ./front_despacho
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
+
+      # 2. Construir y subir Backend Ventas (Puerto 8086)
+      - name: Build & Push Backend Ventas
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest ./back-Ventas_SpringBoot/Springboot-API-REST
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest
+
+      # 3. Construir y subir Backend Despachos (Puerto 8085)
+      - name: Build & Push Backend Despachos
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest ./back-Despachos_SpringBoot/Springboot-API-REST
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
+
+  # ==========================================
+  # TRABAJO 2: DESPLIEGUE AUTOMÁTICO EN AWS (CD)
+  # ==========================================
+  deploy-to-ec2:
+    name: Conectarse a EC2 y actualizar contenedores
+    needs: build-and-push # Asegura que solo despliegue si los builds de Java/Node fueron exitosos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar comandos en EC2 vía SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/proyecto-semestral || git clone -b deploy https://github.com/EliasLeonAlfaro/InnovaTech.git ~/proyecto-semestral && cd ~/proyecto-semestral
+            
+            # Sincronizar el repositorio en el servidor
+            git pull origin deploy
+            
+            # Descargar las nuevas imágenes creadas en este commit desde Docker Hub
+            docker-compose pull
+            
+            # Levantar el ecosistema completo (Frontend, Ventas, Despachos, MySQL)
+            docker-compose up -d
+            
+            # Limpiar imágenes obsoletas para evitar llenar el disco de la EC2
+            docker image prune -f
