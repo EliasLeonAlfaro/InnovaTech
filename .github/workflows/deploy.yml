@@ -39,32 +39,67 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
-
   # ==========================================
-  # TRABAJO 2: DESPLIEGUE AUTOMÁTICO EN AWS (CD)
+  # TRABAJO DE DESPLIEGUE DISTRIBUIDO VÍA AWS SSM
   # ==========================================
-  deploy-to-ec2:
-    name: Conectarse a EC2 y actualizar contenedores
-    needs: build-and-push # Asegura que solo despliegue si los builds de Java/Node fueron exitosos
+  deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Ejecutar comandos en EC2 vía SSH
-        uses: appleboy/ssh-action@master
+      - name: Configurar Credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.EC2_HOST_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ~/proyecto-semestral || git clone -b deploy https://github.com/EliasLeonAlfaro/InnovaTech.git ~/proyecto-semestral && cd ~/proyecto-semestral
-            
-            # Sincronizar el repositorio en el servidor
-            git pull origin deploy
-            
-            # Descargar las nuevas imágenes creadas en este commit desde Docker Hub
-            docker-compose pull
-            
-            # Levantar el ecosistema completo (Frontend, Ventas, Despachos, MySQL)
-            docker-compose up -d
-            
-            # Limpiar imágenes obsoletas para evitar llenar el disco de la EC2
-            docker image prune -f
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # ------------------------------------------
+      # 1. DESPLIEGUE DE LA BASE DE DATOS
+      # ------------------------------------------
+      - name: Deploy Database via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_DB_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[
+              'docker stop db-innovatech || true',
+              'docker rm db-innovatech || true',
+              'docker run -d --name db-innovatech -p 3306:3306 -v db_data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=root_password mysql:8.0'
+            ]"
+
+      # ------------------------------------------
+      # 2. DESPLIEGUE DE LOS BACKENDS
+      # ------------------------------------------
+      - name: Deploy Backends via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_BACKEND_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[
+              'echo \"${{ secrets.DOCKERHUB_TOKEN }}\" | docker login -u \"${{ secrets.DOCKERHUB_USERNAME }}\" --password-stdin',
+              'docker pull ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest',
+              'docker pull ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
+              'docker stop back-despachos back-ventas || true',
+              'docker rm back-despachos back-ventas || true',
+              'docker run -d --name back-despachos -p 8081:8081 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USER=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest',
+              'docker run -d --name back-ventas -p 8082:8081 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USER=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
+              'docker image prune -f'
+            ]"
+
+      # ------------------------------------------
+      # 3. DESPLIEGUE DEL FRONTEND
+      # ------------------------------------------
+      - name: Deploy Frontend via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_FRONTEND_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[
+              'echo \"${{ secrets.DOCKERHUB_TOKEN }}\" | docker login -u \"${{ secrets.DOCKERHUB_USERNAME }}\" --password-stdin',
+              'docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest',
+              'docker stop frontend-despacho || true',
+              'docker rm frontend-despacho || true',
+              'docker run -d --name frontend-despacho -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest',
+              'docker image prune -f'
+            ]"
