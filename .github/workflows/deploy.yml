@@ -1,4 +1,4 @@
-name: CI/CD Innovatech Monorepo (Docker Hub + EC2)
+name: CI/CD Innovatech(Docker Hub + EC2)
 
 # El pipeline se activará automáticamente cada vez que hagas un push a la rama deploy
 on:
@@ -39,8 +39,9 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
+
   # ==========================================
-  # TRABAJO DE DESPLIEGUE DISTRIBUIDO VÍA AWS SSM
+  # TRABAJO 2: DESPLIEGUE DISTRIBUIDO VÍA AWS SSM
   # ==========================================
   deploy:
     needs: build-and-push
@@ -67,8 +68,9 @@ jobs:
               'docker rm db-innovatech || true',
               'docker run -d --name db-innovatech -p 3306:3306 -v db_data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=root_password mysql:8.0'
             ]"
+
       # ------------------------------------------
-      # 2. DESPLIEGUE DE LOS BACKENDS
+      # 2. DESPLIEGUE DE LOS BACKENDS (CORREGIDO)
       # ------------------------------------------
       - name: Deploy Backends via SSM
         run: |
@@ -82,8 +84,8 @@ jobs:
               'docker stop back-despachos back-ventas || true',
               'docker rm back-despachos back-ventas || true',
               'docker network create backend-net || true',
-              'docker run -d --name back-despachos --network backend-net -p 8085:8085 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USER=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest',
-              'docker run -d --name back-ventas --network backend-net -p 8086:8086 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USER=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
+              'docker run -d --name back-despachos --network backend-net -p 8085:8085 -e SERVER_PORT=8085 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USERNAME=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest',
+              'docker run -d --name back-ventas --network backend-net -p 8086:8086 -e SERVER_PORT=8086 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USERNAME=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
               'docker image prune -f'
             ]"
 
