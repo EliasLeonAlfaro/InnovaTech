@@ -37,7 +37,7 @@ jobs:
       # 3. Construir y subir Backend Despachos (Puerto 8085)
       - name: Build & Push Backend Despachos
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHOS
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
 
   # ==========================================
