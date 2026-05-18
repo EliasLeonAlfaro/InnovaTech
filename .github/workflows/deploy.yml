@@ -104,7 +104,7 @@ jobs:
               'docker rm frontend-despacho api-proxy || true',
               'docker network create frontend-net || true',
               'docker run -d --name frontend-despacho --network frontend-net -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest',
-              'echo \"server { listen 8085; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8085; proxy_http_version 1.1; } } server { listen 8086; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8086; proxy_http_version 1.1; } }\" > /tmp/proxy.conf',
+              'echo \"server { listen 8085; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8085; proxy_http_version 1.1; add_header Cross-Origin-Resource-Policy cross-origin always; } } server { listen 8086; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8086; proxy_http_version 1.1; add_header Cross-Origin-Resource-Policy cross-origin always; } }\" > /tmp/proxy.conf',
               'docker run -d --name api-proxy --network frontend-net -p 8085:8085 -p 8086:8086 -v /tmp/proxy.conf:/etc/nginx/conf.d/default.conf nginx:alpine',
               'docker image prune -f'
             ]"
