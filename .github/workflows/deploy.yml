@@ -90,7 +90,7 @@ jobs:
             ]"
 
       # ------------------------------------------
-      # 3. DESPLIEGUE DEL FRONTEND + REVERSE PROXYyyyy
+      # 3. DESPLIEGUE DEL FRONTEND + REVERSE PROXY
       # ------------------------------------------
       - name: Deploy Frontend via SSM
         run: |
