@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Base de Datos MySQL
+  mysql_db:
+    image: mysql:8.0
+    container_name: innova_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - data_persistente_mysql:/var/lib/mysql
+
+  # Microservicio de Ventas -> Puerto 8086
+  ventas_backend:
+    build: ./back-Ventas_SpringBoot/Springboot-API-REST
+    image: ${DOCKERHUB_USERNAME}/back-ventas:latest
+    container_name: service_ventas
+    environment:
+      - DB_ENDPOINT=mysql_db
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "8086:8086" # <-- Mapeo actualizado
+    depends_on:
+      - mysql_db
+
+  # Microservicio de Despachos -> Puerto 8085
+  despachos_backend:
+    build: ./back-Despachos_SpringBoot/Springboot-API-REST
+    image: ${DOCKERHUB_USERNAME}/back-despachos:latest
+    container_name: service_despachos
+    environment:
+      - DB_ENDPOINT=mysql_db
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "8085:8085" # <-- Mapeo actualizado
+    depends_on:
+      - mysql_db
+
+  # Frontend de la Aplicación
+  despacho_frontend:
+    build: ./front_despacho
+    image: ${DOCKERHUB_USERNAME}/front-despacho:latest
+    container_name: service_frontend
+    ports:
+      - "80:80"
+
+volumes:
+  data_persistente_mysql:
