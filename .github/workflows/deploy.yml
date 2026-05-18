@@ -67,7 +67,6 @@ jobs:
               'docker rm db-innovatech || true',
               'docker run -d --name db-innovatech -p 3306:3306 -v db_data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=root_password mysql:8.0'
             ]"
-
       # ------------------------------------------
       # 2. DESPLIEGUE DE LOS BACKENDS
       # ------------------------------------------
@@ -82,8 +81,9 @@ jobs:
               'docker pull ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
               'docker stop back-despachos back-ventas || true',
               'docker rm back-despachos back-ventas || true',
-              'docker run -d --name back-despachos -p 8081:8081 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USER=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest',
-              'docker run -d --name back-ventas -p 8082:8081 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USER=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
+              'docker network create backend-net || true',
+              'docker run -d --name back-despachos --network backend-net -p 8085:8085 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USER=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest',
+              'docker run -d --name back-ventas --network backend-net -p 8086:8086 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USER=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
               'docker image prune -f'
             ]"
 
@@ -100,8 +100,9 @@ jobs:
               'docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest',
               'docker stop frontend-despacho api-proxy || true',
               'docker rm frontend-despacho api-proxy || true',
-              'docker run -d --name frontend-despacho -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest',
-              'echo \"server { listen 8085; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8085; } } server { listen 8086; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8086; } }\" > /tmp/proxy.conf',
-              'docker run -d --name api-proxy -p 8085:8085 -p 8086:8086 -v /tmp/proxy.conf:/etc/nginx/conf.d/default.conf nginx:alpine',
+              'docker network create frontend-net || true',
+              'docker run -d --name frontend-despacho --network frontend-net -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest',
+              'echo \"server { listen 8085; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8085; proxy_http_version 1.1; } } server { listen 8086; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8086; proxy_http_version 1.1; } }\" > /tmp/proxy.conf',
+              'docker run -d --name api-proxy --network frontend-net -p 8085:8085 -p 8086:8086 -v /tmp/proxy.conf:/etc/nginx/conf.d/default.conf nginx:alpine',
               'docker image prune -f'
             ]"
