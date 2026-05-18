@@ -25,6 +25,26 @@ RUN addgroup -g 1001 -S appgroup && \
 # Copiar los archivos estáticos compilados desde la etapa anterior
 COPY --from=build /app/dist .
 
+# Generar configuración nginx automáticamente
+RUN printf '%s\n' \
+'server {' \
+'    listen 80;' \
+'    server_name localhost;' \
+'' \
+'    root /usr/share/nginx/html;' \
+'    index index.html;' \
+'' \
+'    location / {' \
+'        try_files $uri $uri/ /index.html;' \
+'    }' \
+'' \
+'    location ~* \.(png|jpg|jpeg|gif|svg|webp|ico)$ {' \
+'        expires 30d;' \
+'        add_header Cache-Control "public, no-transform";' \
+'    }' \
+'}' \
+> /etc/nginx/conf.d/default.conf
+
 # Configurar permisos para que Nginx pueda correr sin privilegios de root
 RUN chown -R appuser:appgroup /usr/share/nginx/html && \
     chown -R appuser:appgroup /var/cache/nginx && \
