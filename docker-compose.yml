@@ -17,7 +17,7 @@ services:
 
   # Microservicio de Ventas -> Puerto 8086
   ventas_backend:
-    build: ./back-Ventas_SpringBoot/
+    build: ./back-Ventas_SpringBoot/Springboot-API-REST
     image: ${DOCKERHUB_USERNAME}/back-ventas:latest
     container_name: service_ventas
     environment:
@@ -33,7 +33,7 @@ services:
 
   # Microservicio de Despachos -> Puerto 8085
   despachos_backend:
-    build: ./back-Despachos_SpringBoot/
+    build: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
     image: ${DOCKERHUB_USERNAME}/back-despachos:latest
     container_name: service_despachos
     environment:
