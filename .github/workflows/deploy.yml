@@ -70,7 +70,7 @@ jobs:
             ]"
 
       # ------------------------------------------
-      # 2. DESPLIEGUE DE LOS BACKENDS (CORREGIDO)
+      # 2. DESPLIEGUE DE LOS BACKENDS (URL CORREGIDA CON ALLOW PUBLIC KEY)
       # ------------------------------------------
       - name: Deploy Backends via SSM
         run: |
@@ -84,8 +84,8 @@ jobs:
               'docker stop back-despachos back-ventas || true',
               'docker rm back-despachos back-ventas || true',
               'docker network create backend-net || true',
-              'docker run -d --name back-despachos --network backend-net -p 8085:8085 -e SERVER_PORT=8085 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USERNAME=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest',
-              'docker run -d --name back-ventas --network backend-net -p 8086:8086 -e SERVER_PORT=8086 -e DB_ENDPOINT=${{ secrets.IP_PRIVADA_DB }} -e DB_PORT=3306 -e DB_NAME=db_innovatech -e DB_USERNAME=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
+              'docker run -d --name back-despachos --network backend-net -p 8085:8085 -e SERVER_PORT=8085 -e SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.IP_PRIVADA_DB }}:3306/db_innovatech?allowPublicKeyRetrieval=true&useSSL=false -e DB_USERNAME=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest',
+              'docker run -d --name back-ventas --network backend-net -p 8086:8086 -e SERVER_PORT=8086 -e SPRING_DATASOURCE_URL=jdbc:mysql://${{ secrets.IP_PRIVADA_DB }}:3306/db_innovatech?allowPublicKeyRetrieval=true&useSSL=false -e DB_USERNAME=root -e DB_PASSWORD=root_password --restart always ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest',
               'docker image prune -f'
             ]"
 
