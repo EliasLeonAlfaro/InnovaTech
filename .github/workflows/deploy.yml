@@ -88,7 +88,7 @@ jobs:
             ]"
 
       # ------------------------------------------
-      # 3. DESPLIEGUE DEL FRONTEND
+      # 3. DESPLIEGUE DEL FRONTEND + REVERSE PROXY
       # ------------------------------------------
       - name: Deploy Frontend via SSM
         run: |
@@ -98,8 +98,10 @@ jobs:
             --parameters "commands=[
               'echo \"${{ secrets.DOCKERHUB_TOKEN }}\" | docker login -u \"${{ secrets.DOCKERHUB_USERNAME }}\" --password-stdin',
               'docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest',
-              'docker stop frontend-despacho || true',
-              'docker rm frontend-despacho || true',
+              'docker stop frontend-despacho api-proxy || true',
+              'docker rm frontend-despacho api-proxy || true',
               'docker run -d --name frontend-despacho -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest',
+              'echo \"server { listen 8085; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8085; } } server { listen 8086; location / { proxy_pass http://${{ secrets.IP_PRIVADA_BACKEND }}:8086; } }\" > /tmp/proxy.conf',
+              'docker run -d --name api-proxy -p 8085:8085 -p 8086:8086 -v /tmp/proxy.conf:/etc/nginx/conf.d/default.conf nginx:alpine',
               'docker image prune -f'
             ]"
